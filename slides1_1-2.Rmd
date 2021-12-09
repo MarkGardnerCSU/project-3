@@ -1,0 +1,243 @@
+---
+title: "Monte Carlo Methods for Understanding Pharmacy Student Loans "
+author: "Paul Chong, Mark Gardner, Nat Koonmee"
+date: "12/06/21"
+output:
+  beamer_presentation: default
+  pdf_document: default
+  ioslides_presentation: default
+  slidy_presentation: default
+---
+
+```{r, include=FALSE}
+
+# PACKAGES AND DEPENDENT CODE FROM CODE.RMD
+
+library(readr)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+
+library(ggpubr)
+
+
+knitr::opts_chunk$set(dev = 'pdf')
+
+```
+
+
+
+# Motivation
+
++ As university students ourselves, many of us are familiar with the student loan process.
+
++ Our focus was the underlying financial facts and how industry uses monte carlo estimates. 
+
++ In this presentation, we will:
++ Explain our inspiration behind this experiment
++ Provide background information on our experiment
++ Explain our replication
++ Further expand on our findings based on our statistical knowledge 
+
+# About the experiment inspiration
+
++ The inspiration for the experiment comes from a paper from the American Journal of Pharmaceutical Education.
+
++ "Evaluating the Financial Burdens for Graduating Pharmacists"
+
++ Compares income of medical practitioners between 2009 and 2014 using their income and student loan debt
+
++ We want to replicate part of the experiment using Monte Carlo, specifically focusing on the financing involved at the bank. 
+
++ Our team wanted to see if the bank is able to make profit off of pharmaceutical students. 
+
+# Least-Squares Monte Carlo and insurance
+
++ Additionally, we considerd a paper titled Least-Squares Monte Carlo (LSMC) for Proxy Modeling Life Insurance: Neural Networks.  
+
++ Two key points: LSMC modeling is common-place in industry for understanding risk exposure; LSMC is used to simulate potential losses where a full MC estimation would be unfeasible.
+
++ Key Question for LSMC in insurance: can we build a model in which an LSMC estimation would be profitable 99.5% of the time. 
+
++ LSMC in life insurance modeling seemed similar to our task re: student loans: can the bank use a MC estimation which would be profitable 95% of the time. 
+
+# Least-Squares Monte Carlo and insurance
+
++ "However, even when using using proxies, we hear reports from insurers that they need as much computing power for risk management applications—primarily for Solvency Capital Requirement (SCR) calculations—as they do for the administration of all insurance policies. Therefore, a large saving potential can be realized if the proxies become more efficient and accurate." 
+
+# How much does the bank lose to defaults on student loans?
+
++ Average loan for pharmaceutical student is $144,000
+
++ Default rate is around 7%
+
++ Average loss of one person's default is $174,000
+
++ Number of loans handed out of medium-sized, private bank is a little under 100,000
+
+# Calculated vs. Computed
+
++ We are going to calculate mathematically the amount of money the bank loses due to defaults, assuming the interest rate is 0%!
+
++ Bank is lending money for free
+
++ Equation: $Loss = n_{loans} * Default_{Rate} * Default_{loss}$
+
++ Loss = $1,218,805,000
+
+
+# Calculated vs Computed (cont.)
+
++ In Monte Carlo method, we ran for 1000 iterations
+
++ Could have done more for better result, but didn't want to waste time on preliminaary methods. 
+
++ Monte Carlo Estimation Loss = $1,219,456,712
+
++ Both the calculated and computed estimates are very similar
+
+# Calculated vs. Computed (cont.)
+
+```{r}
+loan <- 144000
+default_rate <- 0.07
+#approx around 7 years to pay all the loan back
+default_loss <- -174115
+n_loans <- 100000
+
+# Monte Carlo method 
+B <- 1000 # Number of iterations 
+results <- replicate(B,{ 
+    
+        temp <-sample(c(0,default_loss),n_loans,
+                      prob=c(1-default_rate, default_rate),
+                      replace = TRUE) 
+        sum(temp)})
+
+
+```
+
+# Calculated vs. Computed (cont.)
+```{r, echo=FALSE}
+cat("Calculation result:", n_loans * default_rate * default_loss, "\n")
+cat("Monte Carlo result:",mean(results))
+```
+
+# Calculated vs. Computed (cont.)
+
+```{r,echo=FALSE, warning=FALSE}
+hist(results,breaks=100,xlab="Profit in US dollars", 
+   main="Histogram of Loss Pharmacist Student Loan Debt")
+```
+
+# Calculated vs. Computed (cont.)
+
++ So this begs the question, how much interest is needed to prevent a loss?
+
+# Minimum Interest?
+
++ Our equation for profit: $Gain * (1 - Default_{Rate}) - (Default_{Loss} * Default_{Rate}) = Profit$
+
++ We want to test for profit of $0, to check for minimum interest that the bank has to charge
+
++ $Gain * (1 - Default_{Rate}) - (Default_{Loss} * Default_{Rate}) = 0$
+
++ $Gain = (Default_{Loss} * Default_{Rate}) / (1 - Default_{Rate})$
+
++ We can calculate interest as Interest = Gain/Loan
+
+```{r,echo=FALSE, cache=TRUE}
+#25% of the sudent debt, is help by active student
+
+interest_rate <- 0.000    # Start with a 0% interest
+
+result <- 0
+
+proportion <- c(1-default_rate,default_rate)
+while (result <= 0){ # Each iteration increases the interest rate until the bank's profit is greater than $0.
+    interest_rate <- interest_rate + 0.001 # Increase interest by 0.1%, to find the interest rate to to set the profit to zero 
+    result <- mean(replicate(B,{ #Monte Carlo Method
+                        temp <- sample(c(loan*interest_rate,default_loss), n_loans, prob = proportion, replace = TRUE)
+                        
+                        sum(temp)
+    }))
+}
+
+cat("Interest from Simulation:", interest_rate, "\n")
+
+cat("Interest from Equation", -(default_loss * default_rate / (1-default_rate))/loan)
+
+```
+
+# Minimum Interest? 
+
++ Again, the calculated and computed are very similar, let's see what the distribution of the bank's returns will look like with a 9.2% interest rate. 
+
+```{r, echo = FALSE, cache=TRUE}
+simu <- replicate(B,{temp <- sample(c(loan*0.092,default_loss), n_loans, prob = proportion, replace = TRUE)
+                    sum(temp)
+    })
+
+
+#mean(simu <=0)
+
+```
+
+# Minimum Interest?
+
+```{r, echo = FALSE}
+hist(simu,breaks=100,xlab="Profit in US dollars", 
+   main="Histogram of Profit from Pharmacy Student")
+
+
+```
+
+# Minimum Interest?
+
++ There are problems with this graph, as theoretically the $0 in profit should be in the middle of the distribution
+
++ Still around 30%-40% chance bank loses money
+
++ However, there is still room for improvement
+
+# Can we bring that frequency down to 5%?
+
++ What is the interest rate that can offer money loss frequency of less than 5%?
+
++ We are assuming normal distribution
+
++ With this assumption, we can work with a z-score from a standardized distribution to help us determine what interest rate is at the 5th percentile. 
+
++ We can then isolate the gain once again to find good interest on loan
+
++ Next job is to see if Monte Carlo can replicate a 5% loss rate
+
++ We hope to add this to the paper next week
+
+
+# Conclusion
+
++ We have found the calculated value and computed values can be very similar.
+
++ However, the simulation on the minimum interest rate has produced concerning results
+
++ We wonder if we should look back at our calculation model as well
+
++ We hope we can simulate a loss rate of 5% through Monte Carlo and our mathematical models
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
