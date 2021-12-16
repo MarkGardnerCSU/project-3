@@ -1,0 +1,219 @@
+---
+title: "Final_RMD"
+author: "Paul Chong"
+date: "12/16/2021"
+output: html_document
+---
+
+```{r, include=FALSE}
+
+# PACKAGES AND DEPENDENT CODE FROM CODE.RMD
+
+library(readr)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+
+library(ggpubr)
+
+
+knitr::opts_chunk$set(dev = 'pdf')
+
+```
+
+
+
+
+
+
+# Calculated vs. Computed (cont.)
+
+```{r}
+loan <- 144000
+
+drate <- 0.07 # default rate = 0.7
+dloss <- -174115 # loss from each default
+n_loans <- 100000
+
+# Monte Carlo method 
+B <- 1000 # Number of iterations 
+results <- replicate(B,{ 
+    
+        temp <-sample(c(0,dloss),n_loans,
+                      prob=c(1-drate, drate),
+                      replace = TRUE) 
+        sum(temp)})
+
+
+```
+
+# Calculated vs. Computed (cont.)
+```{r, echo=FALSE}
+cat("Calculation result:", n_loans * drate * dloss, "\n")
+cat("Monte Carlo result:",mean(results))
+```
+
+# Calculated vs. Computed (cont.)
+
+```{r,echo=FALSE, warning=FALSE}
+hist(results,breaks=50,xlab="Profit in US dollars", 
+   main="Histogram of Loss Pharmacist Student Loan Debt")
+```
+
+# Calculated vs. Computed (cont.)
+
++ So this begs the question, how much interest is needed to prevent a loss?
+
+# Minimum Interest?
+
++ Our equation for profit: $Gain * (1 - Default_{Rate}) - (Default_{Loss} * Default_{Rate}) = Profit$
+
++ We want to test for profit of $0, to check for minimum interest that the bank has to charge
+
++ $Gain * (1 - Default_{Rate}) - (Default_{Loss} * Default_{Rate}) = 0$
+
++ $Gain = (Default_{Loss} * Default_{Rate}) / (1 - Default_{Rate})$
+
++ We can calculate interest as Interest = Gain/Loan
+
+```{r,echo=FALSE, cache=TRUE}
+#25% of the sudent debt, is help by active student
+
+interest <- 0.000    # Start with a 0% interest
+
+result <- 0
+
+proportion <- c(1-drate,drate)
+while (result <= 0){ # Each iteration increases the interest rate until the bank's profit is greater than $0.
+    interest <- interest + 0.001 # Increase interest by 0.1%, to find the interest rate to to set the profit to zero 
+    result <- mean(replicate(B,{ #Monte Carlo Method
+                        temp <- sample(c(loan*interest,dloss), n_loans, prob = proportion, replace = TRUE)
+                        
+                        sum(temp)
+    }))
+}
+
+cat("Interest from Simulation:", interest, "\n")
+
+cat("Interest from Equation", -(dloss * drate / (1-drate))/loan)
+
+```
+
+# Minimum Interest? 
+
++ Again, the calculated and computed are very similar, let's see what the distribution of the bank's returns will look like with a 9.2% interest rate. 
+
+```{r, echo = FALSE, cache=TRUE}
+simu <- replicate(B,{temp <- sample(c(loan*0.091,dloss), n_loans, prob = proportion, replace = TRUE)
+                    sum(temp)
+    })
+
+
+#mean(simu <=0)
+
+```
+
+# Minimum Interest?
+
+```{r, echo = FALSE}
+hist(simu,breaks=100,xlab="Profit in US dollars", 
+   main="Histogram of Profit from Pharmacy Student")
+
+
+```
+We can see that the mean profit in this histogram is zero, representing $0 loss in 
+
+Money loss chance of less than 5%
+
+```{r , cacheTRUE}
+set.seed(400)
+
+
+#Since we we include the default rate is 9.1% or 0.091, so the z-score is this case will be -1.329 from the table (calculated from qnorm)
+alpha <- qnorm(.091)
+upper <- - dloss* (drate*n_loans-(alpha)*sqrt(n_loans*drate*(1-drate)))
+lower <- (n_loans*(1-drate)+(alpha)*sqrt(n_loans*drate*(1-drate)))
+gain <- upper/lower
+
+# Interest formula
+eq <- gain/loan
+
+cat("Interest from Equation: ", eq)
+
+
+```
+
+
+```{r , cacheTRUE}
+set.seed(400)
+
+#when we have to include the percent taht student can't pay the moneyback
+
+interest <- 0.0    # Start with a 0% interest
+
+result <- 0
+
+while (TRUE){
+    interest <- interest + 0.001 # Each interation increases interest by 0.1% until the result is greater than $0.
+    result <- replicate(B,{
+                        temp <- sample(c(loan*interest,dloss), n_loans, prob = c(1-drate,drate), replace = T)
+                        sum(temp)
+    })
+    
+    if (mean(result <= 0)<=0.05){break} # Test if the scenarios where profit was < 0 represent the 5% of the total.
+}
+
+cat("The output interest from simulation is ", interest)
+
+
+
+
+```
+```{r, cacheTRUE}
+set.seed(400)
+lonVec <- c(loan*interest,dloss)
+simu2 <- replicate(B,{temp <- sample(lonVec, n_loans, prob = proportion, replace = T)
+                    sum(temp)
+    })
+hist(simu2,breaks=breaksto,xlab="Profit in US dollars", 
+   main="Histogram of profit from Student Loans")
+
+
+
+```
+
+```{r }
+set.seed(400)
+
+h<-hist(Sample, breaks=breaksto, xlab="Profit in US dollars", 
+   main="Histogram of profit from Student Loans") 
+x<-seq(min(simu2),max(simu2),length=40) 
+y<-dnorm(x,mean=mean(simu2),sd=sd(simu2)) 
+y <- y*diff(h$mids[1:2])*length(simu2) 
+lines(x, y, col="red", lwd=2)
+
+
+
+
+```
+
+
+
+```{r }
+
+quantile_val <- pnorm(0.05,mean = mean(simu2), sd = sd(simu2))
+cat("5th Quantile:",quantile_val )
+
+
+
+```
+
+
+```{r }
+
+ccat = cut(h$breaks, c(-Inf, quantile_val, Inf))
+plot(h, col=c("red","green")[ccat],xlab="Profit in US dollars", 
+   main="Histogram of Profit from Scamming College Students")
+
+
+```
