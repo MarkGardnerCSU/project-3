@@ -1,0 +1,227 @@
+---
+title: "Monte Carlo Methods for Scamming College Students"
+author: "Paul Chong, Mark Gardner, Nat Koonmee"
+date: "12/06/21"
+output:
+  slidy_presentation: default
+  pdf_document: default
+  ioslides_presentation: default
+  beamer_presentation: default
+---
+
+```{r, include=FALSE}
+# PACKAGES AND DEPENDENT CODE FROM CODE.RMD
+library(readr)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+knitr::opts_chunk$set(dev = 'pdf')
+```
+
+
+
+# Motivation
+
+As university students ourselves, a number of us are attending this wonderful class with borrowed money from the bank.
+
+Our team wanted to play devil's advocate and find how banks can make profit from student loans
+
+In this presentation, we will
++ Explain our inspiration behind this experiment
++ Provide background information on our experiment
++ Explain our replication
++ Further expand on our findings based on our statistical knowledge and 
+
+# About the experiment inspiration
+
++ The inspiration for the experiment comes from a paper from the American Journal of Pharmaceutical Education.
+
++ "Evaluating the Financial Burdens for Graduating Pharmacists"
+
++ Compares income of medical practitioners between 2009 and 2014 using their income and student loan debt
+
+# About the experiment inspiration (cont.)
+
++ We want to replicate part of the experiment using Monte Carlo and play devil's advocate for the bank
+
++ Our team wanted to see if the bank is able to make profit off of pharmaceutical students
+
+# How much does the bank lose to defaults on student loans?
+
++ Average loan for pharmaceutical student is $144,000
+
++ Default rate is around 7%
+
++ Average loss of one person's default is $174,000
+
++ Number of loans handed out of medium-sized, private bank is a little under 100,000
+
+# Calculated vs. Computed
+
++ We are going to calculate mathematically the amount of money the bank loses due to defaults, assuming the interest rate is 0%!
+
++ Bank is lending money for free
+
++ Equation: Loss = Number of Loans * Default Rate * Default Loss per Person
+
++ Loss = $1,218,805,000
+
+# Calculated vs Computed (cont.)
+
++ In Monte Carlo method, we ran for 1000 iterations
+
++ Could have done more for better result, but didn't want to waste time on preliminaary methods. 
+
++ Monte Carlo Estimation Loss = $1,219,456,712
+
++ Both the calculated and computed estimates are very similar
+
+# Calculated vs. Computed (cont.)
+
+```{r, echo=FALSE}
+loan <- 144000
+default_rate <- 0.07
+#approx around 7 years to pay all the loan back
+default_loss <- -174115
+n_loans <- 100000
+# Monte Carlo method 
+B <- 1000 # Number of iterations 
+results <- replicate(B,{ 
+    
+        temp <-sample(c(0,default_loss),n_loans,prob=c(1-default_rate, default_rate),
+                      replace = TRUE) 
+        sum(temp)})
+# Comparisson between calculated result and Monte Carlo result
+cat("Calculation result:", n_loans * default_rate * default_loss, "\n")
+cat("Monte Carlo result:",mean(results))
+```
+
+```{r,echo=FALSE}
+hist(results,breaks=100,xlab="Profit in US dollars", 
+   main="Histogram of Loss Pharmacist Student Loan Debt")
+```
+
+# Calculated vs. Computed (cont.)
+
++ So this begs the question, how much interest is needed to prevent a loss?
+
+# Minimum Interest?
+
++ Our equation for profit: $Gain * (1 - Default_{Rate}) - (Default_{Loss} * Default_{Rate}) = Profit$
+
++ We want to test for profit of $0, to check for minimum interest that the bank has to charge
+
++ $Gain * (1 - Default_{Rate}) - (Default_{Loss} * Default_{Rate}) = 0$
+
++ $Gain = (Default_{Loss} * Default_{Rate}) / (1 - Default_{Rate})$
+
++ We can calculate interest as GInterest = ain/Loan
+
+```{r,echo=FALSE, cache=TRUE}
+#25% of the sudent debt, is help by active student
+interest_rate <- 0.000    # Start with a 0% interest
+result <- 0
+proportion <- c(1-default_rate,default_rate)
+while (result <= 0){ # Each iteration increases the interest rate until the bank's profit is greater than $0.
+    interest_rate <- interest_rate + 0.001 # Increase interest by 0.1%, to find the interest rate to to set the profit to zero 
+    result <- mean(replicate(B,{ #Monte Carlo Method
+                        temp <- sample(c(loan*interest_rate,default_loss), n_loans, prob = proportion, replace = TRUE)
+                        
+                        sum(temp)
+    }))
+}
+cat("Interest from Simulation:", interest_rate, "\n")
+cat("Interest from Equation", -(default_loss * default_rate / (1-default_rate))/loan)
+```
+
+# Minimum Interest? 
+
++ Again, the calculated and computed are very similar, let's see what the distribution of the bank's returns will look like with a 9.2% interest rate. 
+
+```{r, echo = FALSE}
+simu <- replicate(B,{temp <- sample(c(loan*0.091,default_loss), n_loans, prob = proportion, replace = TRUE)
+                    sum(temp)
+    })
+mean(simu <=0)
+hist(simu,breaks=100,xlab="Profit in US dollars", 
+   main="Profit from Pharmaceutical student loan default")
+```
+
+
+```{r, echo = FALSE}
+total <- c()
+  for(i in 1:30){# bc normally distributed by CLT? 
+  simu <- replicate(B,{temp <- sample(c(loan*0.091,default_loss), n_loans, prob = proportion, replace = TRUE)
+                      sum(temp)
+      })
+
+total[i] <- mean(simu <=0)
+
+  }
+mean9.1 <- mean(total)
+mean9.1
+hist(simu,breaks=100,xlab="Profit in US dollars", 
+   main="Profit from Pharmaceutical student loan default")
+```
+
+```{r, echo = FALSE}
+total <- c()
+  for(i in 1:30){# bc normally distributed by CLT? 
+  simu <- replicate(B,{temp <- sample(c(loan*0.09100993,default_loss), n_loans, prob = proportion, replace = TRUE)
+                      sum(temp)
+      })
+
+total[i] <- mean(simu <=0)
+
+  }
+mean9.100993 <- mean(total)
+mean9.100993
+mean(simu <=0)
+hist(simu,breaks=100,xlab="Profit in US dollars", 
+   main="Profit from Pharmaceutical student loan default")
+```
+
+
+```{r, echo = FALSE}
+total <- c()
+  for(i in 1:30){# bc normally distributed by CLT? 
+  simu <- replicate(B,{temp <- sample(c(loan*0.092,default_loss), n_loans, prob = proportion, replace = TRUE)
+                      sum(temp)
+      })
+
+total[i] <- mean(simu <=0)
+
+  }
+mean9.2 <- mean(total)
+mean9.2
+mean(simu <=0)
+hist(simu,breaks=100,xlab="Profit in US dollars", 
+   main="Profit from Pharmaceutical student loan default")
+```
+
+# Minimum Interest?
+
++ There are problems with this graph, as theoretically the $0 in profit should be in the middle of the distribution
+
++ Still around 30%-40% chance bank loses money
+
++ However, there is still room for improvement
+
+# Can we bring that frequency down to 5%?
+
++ What is the interest rate that can offer money loss frequency of less than 5%?
+
++ We hope to add this to the paper next week
+
++ We are assuming normal distribution
+
+
+
+
+
+
+
+
+
+
