@@ -1,6 +1,6 @@
 ---
 title: "Final Paper 400"
-author: "Paul Chong"
+author: "Paul Chong", "Mark Gardner", "Nat Koonme" 
 date: "12/16/2021"
 output: pdf_document
 ---
